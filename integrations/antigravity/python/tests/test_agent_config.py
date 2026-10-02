@@ -163,7 +163,7 @@ class TestTools:
         config, bridge = build(
             AntigravityAgent(), input_data=run_input(tools=[frontend_tool("set_theme")])
         )
-        assert tool_names(config) == ["set_theme", *READ_TOOLS]
+        assert tool_names(config) == ["set_theme"]
         assert bridge.frontend_tool_names == {"set_theme"}
 
     async def test_frontend_tools_can_be_disabled(self):
@@ -171,7 +171,7 @@ class TestTools:
             AntigravityAgent(enable_frontend_tools=False),
             input_data=run_input(tools=[frontend_tool()]),
         )
-        assert tool_names(config) == READ_TOOLS
+        assert tool_names(config) == []
         assert bridge.frontend_tool_names == set()
 
     async def test_static_tools_are_kept_alongside_client_tools(self):
@@ -183,32 +183,37 @@ class TestTools:
             AntigravityAgent(tools=[lookup_weather]),
             input_data=run_input(tools=[frontend_tool("set_theme")]),
         )
-        assert tool_names(config) == ["lookup_weather", "set_theme", *READ_TOOLS]
+        assert tool_names(config) == ["lookup_weather", "set_theme"]
+
+
+READ_TOOLS_ON = dict(experimental_app_context=True, experimental_app_state=True)
 
 
 class TestReadTools:
-    async def test_both_read_tools_are_on_by_default(self):
+    async def test_read_tools_are_off_by_default(self):
         config, _ = build(AntigravityAgent())
-        assert tool_names(config) == READ_TOOLS
+        assert tool_names(config) == []
 
-    async def test_each_read_tool_can_be_turned_off(self):
-        config, _ = build(AntigravityAgent(expose_app_context=False))
-        assert tool_names(config) == ["get_shared_state"]
-        config, _ = build(AntigravityAgent(expose_shared_state=False))
+    async def test_each_read_tool_is_opted_into_separately(self):
+        config, _ = build(AntigravityAgent(experimental_app_context=True))
         assert tool_names(config) == ["get_app_context"]
+        config, _ = build(AntigravityAgent(experimental_app_state=True))
+        assert tool_names(config) == ["get_shared_state"]
+        config, _ = build(AntigravityAgent(**READ_TOOLS_ON))
+        assert tool_names(config) == READ_TOOLS
 
     async def test_a_server_tool_of_the_same_name_wins(self):
         def get_shared_state() -> dict:
             """The app's own version."""
             return {"mine": True}
 
-        config, _ = build(AntigravityAgent(tools=[get_shared_state]))
+        config, _ = build(AntigravityAgent(tools=[get_shared_state], **READ_TOOLS_ON))
         assert tool_names(config) == ["get_shared_state", "get_app_context"]
         assert config.tools[0].__wrapped__ is get_shared_state
 
     async def test_a_client_tool_of_the_same_name_wins(self):
         config, bridge = build(
-            AntigravityAgent(),
+            AntigravityAgent(**READ_TOOLS_ON),
             input_data=run_input(tools=[frontend_tool("get_app_context")]),
         )
         assert tool_names(config) == ["get_app_context", "get_shared_state"]
@@ -217,7 +222,7 @@ class TestReadTools:
     async def test_read_tools_return_the_runs_context_and_state_silently(self):
         from ag_ui.core import Context
 
-        agent = AntigravityAgent()
+        agent = AntigravityAgent(**READ_TOOLS_ON)
         config, bridge = build(agent)
         bridge.adopt_client_state({"theme": "dark"})
         bridge.adopt_client_context(

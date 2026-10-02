@@ -5,8 +5,8 @@ Here the Antigravity agent is the supervisor and each sub-agent is a server
 tool it calls in turn. A sub-agent
 
 * marks itself as the active agent and publishes what it found, by writing the
-  page's shared state with `set_state()`;
-* for flights and hotels, pauses on the user with `interrupt()` so they can
+  page's shared state with `experimental_set_state()`;
+* for flights and hotels, pauses on the user with `experimental_interrupt()` so they can
   pick an option, then records the pick in `itinerary`.
 
 The page reads `flights`, `hotels`, `experiences`, `itinerary` and
@@ -25,7 +25,11 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
-from ag_ui_antigravity import get_state, interrupt, set_state
+from ag_ui_antigravity import (
+    experimental_get_state,
+    experimental_interrupt,
+    experimental_set_state,
+)
 
 from ._common import build, chat_only_capabilities
 
@@ -97,17 +101,17 @@ EXPERIENCES: List[Dict[str, str]] = [
 
 def _update_state(**changes: Any) -> Dict[str, Any]:
     """Merges ``changes`` into the shared state and streams it to the page."""
-    state = get_state()
+    state = experimental_get_state()
     state.update(changes)
-    set_state(state)
+    experimental_set_state(state)
     return state
 
 
 def _set_itinerary(key: str, value: Dict[str, Any]) -> None:
-    state = get_state()
+    state = experimental_get_state()
     itinerary = dict(state.get("itinerary") or {})
     itinerary[key] = value
-    set_state({**state, "itinerary": itinerary})
+    experimental_set_state({**state, "itinerary": itinerary})
 
 
 def _chosen_option(
@@ -143,7 +147,7 @@ async def flights_agent(origin: str, destination: str) -> str:
     # user has chosen, as in the LangGraph reference (the page shows both).
     _update_state(active_agent="flights", planning_step="flights")
     recommendation = FLIGHTS[0]
-    answer = await interrupt(
+    answer = await experimental_interrupt(
         "flights",
         message=(
             f"Found {len(FLIGHTS)} flight options from {origin} to {destination}. "
@@ -177,7 +181,7 @@ async def hotels_agent(destination: str) -> str:
     """
     _update_state(active_agent="hotels", planning_step="hotels")
     recommendation = HOTELS[2]
-    answer = await interrupt(
+    answer = await experimental_interrupt(
         "hotels",
         message=(
             f"Found {len(HOTELS)} accommodation options in {destination}. "

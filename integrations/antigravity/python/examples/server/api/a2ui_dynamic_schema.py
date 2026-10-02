@@ -2,7 +2,7 @@
 
 ``generate_a2ui`` is an ordinary server tool, owned by the backend. Its body:
 
-1. reads the run's context with ``get_context()`` -- among it the A2UI
+1. reads the run's context with ``experimental_get_context()`` -- among it the A2UI
    component schema the page sends for its catalog;
 2. builds the sub-agent prompt with the A2UI toolkit (generation and design
    guidelines, the context, ``## Available Components``, and the composition
@@ -54,7 +54,7 @@ from ag_ui_a2ui_toolkit import (
     run_a2ui_generation_with_recovery,
     split_a2ui_schema_context,
 )
-from ag_ui_antigravity import get_context
+from ag_ui_antigravity import experimental_get_context
 from google.antigravity.models import DEFAULT_MODEL
 
 from ._common import GEMINI_BASE_URL, MODEL, build, chat_only_capabilities
@@ -275,7 +275,7 @@ async def generate_a2ui(request: str) -> Dict[str, Any]:
     """
     # Read the context here, on the tool's own task: the loop below blocks, so
     # it runs on a worker thread to keep the event loop free.
-    context = get_context()
+    context = experimental_get_context()
     return await asyncio.to_thread(_generate, request, context)
 
 

@@ -20,7 +20,7 @@ from google.antigravity import types as ag_types
 
 from ag_ui_antigravity.agent import AntigravityAgent
 from ag_ui_antigravity.session_manager import AntigravitySession, SessionLimitExceeded
-from ag_ui_antigravity.ui_bridge import UIBridge, get_state, set_state
+from ag_ui_antigravity.ui_bridge import UIBridge, experimental_get_state, experimental_set_state
 
 
 BLOCK = object()
@@ -1843,7 +1843,7 @@ class TestToolContractSignature:
 
 
 class TestSharedStateThroughTheRun:
-    """get_state()/set_state() as a client sees them: through _run_locked."""
+    """experimental_get_state()/experimental_set_state() as a client sees them: through _run_locked."""
 
     @staticmethod
     def _delegating_bridge():
@@ -1855,8 +1855,8 @@ class TestSharedStateThroughTheRun:
             Args:
               task: The task.
             """
-            state = get_state()
-            set_state(
+            state = experimental_get_state()
+            experimental_set_state(
                 {**state, "delegations": state.get("delegations", []) + [task]}
             )
             return "done"

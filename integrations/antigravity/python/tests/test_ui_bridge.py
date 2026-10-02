@@ -8,7 +8,7 @@ import pytest
 from ag_ui.core import Tool as AGUITool
 from google.antigravity import types as ag_types
 
-from ag_ui_antigravity.ui_bridge import UIBridge, get_context, get_state, set_state
+from ag_ui_antigravity.ui_bridge import UIBridge, experimental_get_context, experimental_get_state, experimental_set_state
 
 
 def make_tool(name="set_theme"):
@@ -686,7 +686,7 @@ class TestServerTools:
 
 
 class TestSharedState:
-    """get_state() / set_state(): server tools reading and writing agent state."""
+    """experimental_get_state() / experimental_set_state(): server tools reading and writing agent state."""
 
     async def test_set_state_streams_a_snapshot_before_the_tool_result(self):
         bridge = UIBridge()
@@ -697,9 +697,9 @@ class TestSharedState:
             Args:
               note: The note.
             """
-            state = get_state()
+            state = experimental_get_state()
             state.setdefault("notes", []).append(note)
-            set_state(state)
+            experimental_set_state(state)
             return "ok"
 
         (wrapped,) = bridge.build_server_tools([log_step])
@@ -729,7 +729,7 @@ class TestSharedState:
             Args:
               key: The key.
             """
-            seen["state"] = get_state()
+            seen["state"] = experimental_get_state()
             return "ok"
 
         (wrapped,) = bridge.build_server_tools([read])
@@ -746,12 +746,12 @@ class TestSharedState:
             Args:
               x: A value.
             """
-            get_state()["items"].append(x)
+            experimental_get_state()["items"].append(x)
             return "ok"
 
         (wrapped,) = bridge.build_server_tools([mutate])
         await wrapped(x=2)
-        # Only set_state() changes what the session holds.
+        # Only experimental_set_state() changes what the session holds.
         assert bridge.state == {"items": [1]}
 
     async def test_consecutive_calls_accumulate(self):
@@ -763,8 +763,8 @@ class TestSharedState:
             Args:
               item: The item.
             """
-            state = get_state()
-            set_state({"items": state.get("items", []) + [item]})
+            state = experimental_get_state()
+            experimental_set_state({"items": state.get("items", []) + [item]})
             return "ok"
 
         (wrapped,) = bridge.build_server_tools([append])
@@ -775,9 +775,9 @@ class TestSharedState:
 
     def test_outside_a_server_tool_both_raise(self):
         with pytest.raises(RuntimeError, match="inside a server tool"):
-            get_state()
+            experimental_get_state()
         with pytest.raises(RuntimeError, match="inside a server tool"):
-            set_state({})
+            experimental_set_state({})
 
     async def test_the_tool_context_does_not_leak_after_the_call(self):
         bridge = UIBridge()
@@ -793,7 +793,7 @@ class TestSharedState:
         (wrapped,) = bridge.build_server_tools([noop])
         await wrapped(x=1)
         with pytest.raises(RuntimeError):
-            get_state()
+            experimental_get_state()
 
     async def test_a_failing_tool_does_not_leak_its_context(self):
         bridge = UIBridge()
@@ -810,7 +810,7 @@ class TestSharedState:
         with pytest.raises(ValueError):
             await wrapped(x=1)
         with pytest.raises(RuntimeError):
-            get_state()
+            experimental_get_state()
 
     async def test_concurrent_tools_on_two_sessions_see_their_own_state(self):
         """The SDK dispatches tools concurrently; each must reach its own session."""
@@ -827,7 +827,7 @@ class TestSharedState:
               x: A value.
             """
             await gate.wait()
-            seen.append(get_state()["who"])
+            seen.append(experimental_get_state()["who"])
             return "ok"
 
         (a,) = first.build_server_tools([who])
@@ -847,7 +847,7 @@ class TestSharedState:
             Args:
               kind: Which bad value.
             """
-            set_state(["not", "a", "dict"] if kind == "list" else {"x": object()})
+            experimental_set_state(["not", "a", "dict"] if kind == "list" else {"x": object()})
             return "ok"
 
         (wrapped,) = bridge.build_server_tools([bad])
@@ -886,7 +886,7 @@ class TestSharedState:
 
 
 class TestContext:
-    """get_context(): the run's RunAgentInput.context, for server tools."""
+    """experimental_get_context(): the run's RunAgentInput.context, for server tools."""
 
     async def test_a_server_tool_reads_the_runs_context(self):
         from ag_ui.core import Context
@@ -898,7 +898,7 @@ class TestContext:
 
         async def whoami() -> list:
             """Echoes the context."""
-            return get_context()
+            return experimental_get_context()
 
         (wrapped,) = bridge.build_server_tools([whoami])
         assert await wrapped() == [
@@ -919,8 +919,8 @@ class TestContext:
         assert bridge.context == [{"description": "a", "value": "1"}]
 
     def test_get_context_outside_a_server_tool_raises(self):
-        with pytest.raises(RuntimeError, match="get_context"):
-            get_context()
+        with pytest.raises(RuntimeError, match="experimental_get_context"):
+            experimental_get_context()
 
     async def test_a_silent_tool_emits_no_events_but_still_sees_the_session(self):
         bridge = UIBridge()
@@ -928,7 +928,7 @@ class TestContext:
 
         def peek() -> dict:
             """Reads state."""
-            return get_state()
+            return experimental_get_state()
 
         (wrapped,) = bridge.build_server_tools([peek], silent=True)
         assert await wrapped() == {"x": 1}
@@ -937,14 +937,14 @@ class TestContext:
 
 
 class TestServerToolInterrupt:
-    """interrupt(): a server tool pausing on an AG-UI interrupt of its own."""
+    """experimental_interrupt(): a server tool pausing on an AG-UI interrupt of its own."""
 
     def _tool(self):
-        from ag_ui_antigravity import interrupt
+        from ag_ui_antigravity import experimental_interrupt
 
         async def schedule_meeting(topic: str) -> str:
             """Books a meeting once the user picks a time."""
-            answer = await interrupt(
+            answer = await experimental_interrupt(
                 "schedule_meeting",
                 message="Pick a time",
                 metadata={"topic": topic},
@@ -998,7 +998,7 @@ class TestServerToolInterrupt:
         assert await task == "not booked (abandoned)"
 
     async def test_interrupt_outside_a_server_tool_raises(self):
-        from ag_ui_antigravity import interrupt
+        from ag_ui_antigravity import experimental_interrupt
 
         with pytest.raises(RuntimeError, match="interrupt"):
-            await interrupt("nope")
+            await experimental_interrupt("nope")

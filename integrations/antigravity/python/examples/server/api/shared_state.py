@@ -2,17 +2,18 @@
 
 The page keeps a `recipe` in AG-UI shared state and writes the user's edits
 back with `agent.setState`. The agent writes it with a server tool that calls
-`set_state()`, which streams a STATE_SNAPSHOT the page renders at once. It reads
-it back through the adapter's built-in `get_shared_state` tool: Antigravity
-fixes the instructions for the whole session, so the state cannot be folded
-into the prompt on each run the way other integrations do it.
+`experimental_set_state()`, which streams a STATE_SNAPSHOT the page renders at
+once. It reads it back through the adapter's built-in `get_shared_state` tool,
+which `experimental_app_state=True` turns on: Antigravity fixes the
+instructions for the whole session, so the state cannot be folded into the
+prompt on each run the way other integrations do it.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from ag_ui_antigravity import get_state, set_state
+from ag_ui_antigravity import experimental_get_state, experimental_set_state
 
 from ._common import build, chat_only_capabilities
 
@@ -38,7 +39,7 @@ def generate_recipe(
       cooking_time: One of 5 min, 15 min, 30 min, 45 min or 60+ min.
       special_preferences: Dietary preferences, such as Vegetarian.
     """
-    state = get_state()
+    state = experimental_get_state()
     recipe = dict(state.get("recipe") or {})
     recipe.update(
         {
@@ -52,13 +53,14 @@ def generate_recipe(
         recipe["cooking_time"] = cooking_time
     if special_preferences is not None:
         recipe["special_preferences"] = special_preferences
-    set_state({**state, "recipe": recipe})
+    experimental_set_state({**state, "recipe": recipe})
     return {"status": "success", "message": "Recipe updated."}
 
 
 agent = build(
     capabilities=chat_only_capabilities(),
     tools=[generate_recipe],
+    experimental_app_state=True,
     system_instructions=(
         "You help the user build a recipe that is shown in the app next to "
         "this chat. The user can edit it there at any time, so call "

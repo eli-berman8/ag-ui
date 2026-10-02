@@ -28,7 +28,7 @@ const tool = (name: string): Tool => ({
   type: "function",
   function: { name, parameters: { type: "object", properties: {} } },
 });
-const INTERRUPT_TOOLS = [tool("schedule_meeting"), tool("get_app_context")];
+const INTERRUPT_TOOLS = [tool("schedule_meeting")];
 const SUBGRAPH_TOOLS = [
   tool("flights_agent"),
   tool("hotels_agent"),

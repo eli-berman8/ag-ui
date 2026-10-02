@@ -84,8 +84,8 @@ _ABANDONED = (
 )
 
 
-# The bridge of the session whose server tool is running, so get_state() and
-# set_state() can reach it without the tool taking a parameter the SDK would
+# The bridge of the session whose server tool is running, so experimental_get_state() and
+# experimental_set_state() can reach it without the tool taking a parameter the SDK would
 # put into the tool's schema.
 _CURRENT_BRIDGE: ContextVar[Optional["UIBridge"]] = ContextVar(
     "ag_ui_antigravity_bridge", default=None
@@ -109,33 +109,33 @@ def _current_bridge(caller: str) -> "UIBridge":
     return bridge
 
 
-def get_state() -> Dict[str, Any]:
+def experimental_get_state() -> Dict[str, Any]:
     """Returns a copy of the current session's shared state.
 
     Call it from a server tool. The state is what the client sent with the
-    run, or what the last set_state() call stored, whichever is newer.
+    run, or what the last experimental_set_state() call stored, whichever is newer.
     """
-    return _current_bridge("get_state").state
+    return _current_bridge("experimental_get_state").state
 
 
-def get_context() -> List[Dict[str, str]]:
+def experimental_get_context() -> List[Dict[str, str]]:
     """Returns a copy of the context the client sent with the current run.
 
     Call it from a server tool. Each entry is ``{"description": ..., "value":
     ...}``, as ``RunAgentInput.context`` carries it -- what CopilotKit's
     ``useAgentContext`` shares with the agent.
     """
-    return _current_bridge("get_context").context
+    return _current_bridge("experimental_get_context").context
 
 
-def set_state(state: Dict[str, Any]) -> None:
+def experimental_set_state(state: Dict[str, Any]) -> None:
     """Replaces the current session's shared state and streams it to the client.
 
     Call it from a server tool. The client receives a STATE_SNAPSHOT right
     away, before the tool's own result, so a UI bound to agent state updates
     while the turn is still running.
     """
-    _current_bridge("set_state").replace_state(state)
+    _current_bridge("experimental_set_state").replace_state(state)
 
 
 @dataclass(frozen=True)
@@ -155,7 +155,7 @@ class InterruptAnswer:
         return self.status == "resolved"
 
 
-async def interrupt(
+async def experimental_interrupt(
     reason: str,
     *,
     message: Optional[str] = None,
@@ -172,9 +172,9 @@ async def interrupt(
     answers it with a ``RunAgentInput.resume`` entry; its payload comes back
     unchanged. The tool keeps running from here, inside the same harness turn.
 
-    Call it from a server tool, as with ``get_state()``.
+    Call it from a server tool, as with ``experimental_get_state()``.
     """
-    bridge = _current_bridge("interrupt")
+    bridge = _current_bridge("experimental_interrupt")
     interrupt_id = str(uuid.uuid4())
     request = PendingRequest(
         id=interrupt_id,
@@ -232,9 +232,9 @@ class UIBridge:
         # arguments also waits on it rather than dispatching a second time.
         self._turn_results: Dict[str, tuple] = {}
         # The session's shared state, as server tools see it. Seeded from each
-        # run's RunAgentInput.state and replaced by set_state().
+        # run's RunAgentInput.state and replaced by experimental_set_state().
         self._state: Dict[str, Any] = {}
-        # True from set_state() until its snapshot is drained into a run. While
+        # True from experimental_set_state() until its snapshot is drained into a run. While
         # it is set the client has not seen our state yet, so the state it
         # sends back is older than ours and must not overwrite it.
         self._state_undelivered = False

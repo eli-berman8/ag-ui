@@ -171,8 +171,8 @@ class AntigravityAgent:
         structured_output_as: str = "state",
         emit_builtin_tool_calls: bool = True,
         deduplicate_tool_calls: bool = True,
-        expose_app_context: bool = True,
-        expose_shared_state: bool = True,
+        experimental_app_context: bool = False,
+        experimental_app_state: bool = False,
         # Session policy
         session_timeout_seconds: int = 1800,
         parked_timeout_seconds: int = 7200,
@@ -211,14 +211,17 @@ class AntigravityAgent:
             ~1 MB per extra idle conversation instead of ~95 MB. The default is
             chosen for blast radius -- one dead process takes every conversation
             on it -- not for memory. Set to 1 for one process per thread.
-          expose_app_context: Give the model a silent ``get_app_context`` tool
-            that returns the run's ``RunAgentInput.context``. Antigravity fixes
-            the instructions per session, so this is how per-run context from
-            ``useAgentContext`` reaches the model.
-          expose_shared_state: Give the model a silent ``get_shared_state`` tool
-            that returns the session's shared state, including edits the user
-            made in the UI. A tool of your own with the same name, or a client
-            tool, takes precedence over either built-in.
+          experimental_app_context: Experimental, off by default. Give the
+            model a silent ``get_app_context`` tool that returns the run's
+            ``RunAgentInput.context``. Antigravity fixes the instructions per
+            session, so without it per-run context from ``useAgentContext``
+            does not reach the model. The model has to call the tool, so say
+            when in the system instructions.
+          experimental_app_state: Experimental, off by default. Give the model
+            a silent ``get_shared_state`` tool that returns the session's
+            shared state, including edits the user made in the UI. A tool of
+            your own with the same name, or a client tool, takes precedence
+            over either built-in.
           deduplicate_tool_calls: Dispatch a frontend tool to the client at most
             once per Antigravity turn. An identical repeat is answered from the
             cached result; a repeat with different arguments gets a plain
@@ -239,8 +242,8 @@ class AntigravityAgent:
         self._system_instructions = system_instructions
         self._capabilities = capabilities
         self._static_tools = list(tools or [])
-        self._expose_app_context = expose_app_context
-        self._expose_shared_state = expose_shared_state
+        self._experimental_app_context = experimental_app_context
+        self._experimental_app_state = experimental_app_state
         self._mcp_servers = list(mcp_servers or [])
         self._subagents = list(subagents or [])
         self._workspaces = list(workspaces) if workspaces else [os.getcwd()]
@@ -535,9 +538,9 @@ class AntigravityAgent:
         if self._enable_frontend_tools:
             taken.update(t.name for t in input_data.tools or [])
         wanted = []
-        if self._expose_app_context:
+        if self._experimental_app_context:
             wanted.append(get_app_context)
-        if self._expose_shared_state:
+        if self._experimental_app_state:
             wanted.append(get_shared_state)
         return [t for t in wanted if t.__name__ not in taken]
 

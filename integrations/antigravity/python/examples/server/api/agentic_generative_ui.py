@@ -3,7 +3,7 @@
 The page renders `state.steps` (each `{"description", "status"}`) as a task
 list and redraws on every state change. The agent's
 `generate_task_steps_generative_ui` server tool writes the plan with
-`set_state()`, which streams a STATE_SNAPSHOT at once, then marks one step
+`experimental_set_state()`, which streams a STATE_SNAPSHOT at once, then marks one step
 completed at a time, pausing between them, so the page shows the plan
 progressing inside a single tool call. The tool's name and argument shape are
 the ones the other integrations' demos use.
@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, List
 
-from ag_ui_antigravity import get_state, set_state
+from ag_ui_antigravity import experimental_get_state, experimental_set_state
 
 from ._common import build, chat_only_capabilities
 
@@ -39,12 +39,12 @@ async def generate_task_steps_generative_ui(
         {"description": str(step.get("description", "")), "status": "pending"}
         for step in steps
     ]
-    state = get_state()
-    set_state({**state, "steps": plan})
+    state = experimental_get_state()
+    experimental_set_state({**state, "steps": plan})
     for index in range(len(plan)):
         await asyncio.sleep(STEP_DELAY)
         plan[index] = {**plan[index], "status": "completed"}
-        set_state({**state, "steps": [dict(step) for step in plan]})
+        experimental_set_state({**state, "steps": [dict(step) for step in plan]})
     return {"status": "completed", "message": f"All {len(plan)} steps are done."}
 
 

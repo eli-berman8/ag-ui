@@ -1,11 +1,11 @@
 """Interrupt: a server tool pauses itself until the user picks a meeting time.
 
 `schedule_meeting` runs on the server and, before it books anything, calls the
-adapter's `interrupt()`. That parks the tool inside the harness turn and ends
+adapter's `experimental_interrupt()`. That parks the tool inside the harness turn and ends
 the AG-UI run with `RUN_FINISHED` carrying an interrupt outcome. The dojo's
 shared interrupt page renders a time picker from the interrupt and answers with
 `RunAgentInput.resume`; the next run hands that answer back to the same
-`interrupt()` call, and the tool carries on from there.
+`experimental_interrupt()` call, and the tool carries on from there.
 
 The page reads the question from `metadata.reason` (the shape AWS Strands
 publishes) and resolves with `{chosen_time, chosen_label}`, or with
@@ -14,7 +14,7 @@ publishes) and resolves with `{chosen_time, chosen_label}`, or with
 
 from __future__ import annotations
 
-from ag_ui_antigravity import interrupt
+from ag_ui_antigravity import experimental_interrupt
 
 from ._common import build, chat_only_capabilities
 
@@ -26,7 +26,7 @@ async def schedule_meeting(topic: str, attendee: str) -> str:
       topic: What the meeting is about, e.g. "Intro call to discuss pricing".
       attendee: Who the meeting is with, e.g. "the sales team".
     """
-    answer = await interrupt(
+    answer = await experimental_interrupt(
         "schedule_meeting",
         message=f"Pick a time for {topic}",
         metadata={"reason": {"topic": topic, "attendee": attendee}},

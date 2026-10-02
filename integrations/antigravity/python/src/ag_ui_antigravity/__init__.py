@@ -11,10 +11,10 @@ from .session_manager import (
 from .ui_bridge import (
     InterruptAnswer,
     UIBridge,
-    get_context,
-    get_state,
-    interrupt,
-    set_state,
+    experimental_get_context,
+    experimental_get_state,
+    experimental_interrupt,
+    experimental_set_state,
 )
 
 __all__ = [
@@ -27,10 +27,10 @@ __all__ = [
     "add_antigravity_fastapi_endpoint",
     "create_antigravity_app",
     "InterruptAnswer",
-    "get_context",
-    "interrupt",
-    "get_state",
-    "set_state",
+    "experimental_get_context",
+    "experimental_interrupt",
+    "experimental_get_state",
+    "experimental_set_state",
 ]
 
 __version__ = "0.1.0"
