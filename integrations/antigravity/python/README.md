@@ -12,6 +12,23 @@ is small; the session lifecycle is the substance.
 Sessions share those subprocesses rather than owning one each — see
 [Harness pooling](#harness-pooling).
 
+## Experimental features
+
+These are off unless you use them, and their names and behaviour may change in
+a later release:
+
+| Feature | How to use it |
+|---|---|
+| Built-in `get_app_context` tool | `AntigravityAgent(experimental_app_context=True)` |
+| Built-in `get_shared_state` tool | `AntigravityAgent(experimental_app_state=True)` |
+| Shared state from server tools | `experimental_get_state()` and `experimental_set_state()` |
+| App context from server tools | `experimental_get_context()` |
+| Interrupts from your own tools | `experimental_interrupt()` |
+
+See [What the model sees](#what-the-model-sees-app-context-and-shared-state),
+[Shared state from server tools](#shared-state-from-server-tools) and
+[Interrupts from your own tools](#interrupts-from-your-own-tools).
+
 ## Why the HITL story is unusually clean
 
 Antigravity's hooks and custom tools are **async, awaited, and carry no
@@ -111,7 +128,7 @@ on this point.) `base_url` and `endpoint` are mutually exclusive.
 | `TOOL_CALL` (built-in / MCP) | `TOOL_CALL_START` / `ARGS` / `END` / `RESULT` |
 | `start_subagent` | `STEP_STARTED` / `STEP_FINISHED` around the delegated work |
 | `FINISH.structured_output` | `STATE_SNAPSHOT` (or `CUSTOM`) |
-| `set_state()` inside a server tool | `STATE_SNAPSHOT` |
+| `experimental_set_state()` inside a server tool | `STATE_SNAPSHOT` |
 | iterator exhaustion | `RUN_FINISHED` |
 | raised `Antigravity*Error` | `RUN_ERROR` (except a mid-stream cancel, which ends `RUN_FINISHED`) |
 | parked hook (question / approval) | `RUN_FINISHED` with an interrupt outcome |
@@ -182,15 +199,15 @@ that has silently gone quiet.
 
 ### Interrupts from your own tools
 
-A server tool can pause itself on an interrupt of its own design with
-`interrupt()`, then carry on with the user's answer:
+*Experimental.* A server tool can pause itself on an interrupt of its own design with
+`experimental_interrupt()`, then carry on with the user's answer:
 
 ```python
-from ag_ui_antigravity import interrupt
+from ag_ui_antigravity import experimental_interrupt
 
 async def schedule_meeting(topic: str, attendee: str) -> str:
     """Books a meeting once the user picks a time."""
-    answer = await interrupt(
+    answer = await experimental_interrupt(
         "schedule_meeting",
         message=f"Pick a time for {topic}",
         metadata={"topic": topic, "attendee": attendee},
@@ -209,7 +226,7 @@ top-level ones never reach the browser. The resume payload comes back unchanged 
 `answer.payload`. `answer.status` is `"resolved"`, `"cancelled"` (the user
 declined) or `"abandoned"` (the user sent a new message instead); tell the model
 which, so it does not report a decline that never happened. As with
-`get_state()`, it only works inside a server tool.
+`experimental_get_state()`, it only works inside a server tool.
 
 ### One turn, several runs
 
@@ -261,24 +278,25 @@ a raised exception is reported to the client as
 
 ### Shared state from server tools
 
-A server tool can read and write the AG-UI shared state of the session it runs
+*Experimental.* A server tool can read and write the AG-UI shared state of the session it runs
 in:
 
 ```python
-from ag_ui_antigravity import get_state, set_state
+from ag_ui_antigravity import experimental_get_state, experimental_set_state
 
 async def research_agent(task: str) -> str:
     """Delegates a research task."""
     facts = await run_research(task)
-    state = get_state()
-    set_state({**state, "delegations": state.get("delegations", []) + [facts]})
+    state = experimental_get_state()
+    delegations = state.get("delegations", []) + [facts]
+    experimental_set_state({**state, "delegations": delegations})
     return facts
 ```
 
-`get_state()` returns a copy of the session's state: what the client sent with
-the run (`RunAgentInput.state`), or what the last `set_state()` stored if the
-client has not received that yet. `set_state()` replaces the whole state and
-emits a `STATE_SNAPSHOT` at once, before the tool's `TOOL_CALL_RESULT`, so a UI
+`experimental_get_state()` returns a copy of the session's state: what the
+client sent with the run (`RunAgentInput.state`), or what the last
+`experimental_set_state()` stored if the client has not received that yet.
+`experimental_set_state()` replaces the whole state and emits a `STATE_SNAPSHOT` at once, before the tool's `TOOL_CALL_RESULT`, so a UI
 bound to agent state updates while the turn is still running. The state must be
 a JSON-serializable dict; anything else raises `TypeError` in the tool.
 
@@ -290,29 +308,40 @@ A write made while the turn is parked (no run attached) is queued and delivered
 on the next run. Until then the adapter keeps its own copy rather than the
 client's, since the client's copy predates the write.
 
-`get_context()` works the same way and returns the run's `RunAgentInput.context`
-(what CopilotKit's `useAgentContext` shares) as a list of
+`experimental_get_context()` works the same way and returns the run's
+`RunAgentInput.context` (what CopilotKit's `useAgentContext` shares) as a list of
 `{"description", "value"}` entries.
 
 ### What the model sees: app context and shared state
 
-Antigravity fixes an agent's instructions when the harness session starts, so
-per-run input cannot be folded into the prompt the way other integrations do.
-Instead the adapter gives every agent two read-only tools the model calls when
-it needs them:
+*Experimental, off by default.* Antigravity fixes an agent's instructions when
+the harness session starts, so per-run input cannot be folded into the prompt
+the way other integrations do. Without help, the model never sees the run's
+context or shared state. The adapter can give an agent two read-only tools the
+model calls when it needs them:
 
-| Tool | Returns |
-|---|---|
-| `get_app_context` | the run's `RunAgentInput.context` |
-| `get_shared_state` | the session's shared state, including the user's edits in the UI |
+| Tool | Returns | Turn it on with |
+|---|---|---|
+| `get_app_context` | the run's `RunAgentInput.context` | `experimental_app_context=True` |
+| `get_shared_state` | the session's shared state, including the user's edits in the UI | `experimental_app_state=True` |
+
+```python
+agent = AntigravityAgent(
+    model="gemini-2.5-flash",
+    experimental_app_context=True,
+    experimental_app_state=True,
+    system_instructions=(
+        "Call get_app_context and get_shared_state before answering anything "
+        "about the user or the app."
+    ),
+)
+```
 
 Both run silently: the client gets no `TOOL_CALL_*` events for them, so no tool
 card appears for what is, elsewhere, an invisible prompt update. Their
 docstrings tell the model to call them whenever the answer may depend on the
 user, the page or the app state; say so in `system_instructions` too when it
-matters. Turn either off with `expose_app_context=False` or
-`expose_shared_state=False`. A server or client tool with the same name takes
-precedence.
+matters. A server or client tool with the same name takes precedence.
 
 The difference from prompt injection is that the model has to ask. A preference
 the user changed in the UI reaches the model on its next call to
@@ -401,7 +430,18 @@ unchanged; per-turn p50 rises ~1.3× only when all 8 turn simultaneously. A
 20-second tool call in one conversation was measured **not** to delay its
 neighbours (median inflation 0.95× against a control).
 
-Set `max_conversations_per_process=1` to go back to one process per thread.
+Pooling is configured on the agent:
+
+| Option | Default | Effect |
+|---|---|---|
+| `max_conversations_per_process` | `8` | conversations sharing one harness process; `1` gives every conversation its own process |
+| `harness_idle_grace_seconds` | `30.0` | how long an empty process stays up before it is stopped |
+| `harness_pool` | a pool per agent | pass one `HarnessPool` to several agents to share processes between them (see below) |
+
+Pooled conversations stay isolated at the harness level (each has its own
+workspaces, tools and instructions), but they share one OS process. If your
+deployment needs process-level isolation between users, set
+`max_conversations_per_process=1`.
 
 ### Several agents in one server
 
@@ -529,7 +569,7 @@ Deliberate gaps, so the surface above is not mistaken for more than it is:
 
 * **Triggers** (async inbound messages) — the SDK supports them; nothing here
   maps them to AG-UI yet.
-* **`STATE_DELTA`** — structured output and `set_state()` are emitted as whole
+* **`STATE_DELTA`** — structured output and `experimental_set_state()` are emitted as whole
   snapshots only.
 * **`forwardedProps`** — apart from interrupt answers, not passed to the model
   or to tools.
