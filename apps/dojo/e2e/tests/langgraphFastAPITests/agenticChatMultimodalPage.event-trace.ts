@@ -26,9 +26,25 @@ const shared4 = [
   },
 ] as const;
 const shared5 = {
-  type: "data",
-  value: shared3,
-  mimeType: "image/png",
+  id: "id-3",
+  role: "user",
+  content: [
+    {
+      type: "text",
+      text: "Tell me what do you see in this image",
+    },
+    {
+      type: "image",
+      source: {
+        type: "data",
+        value: shared3,
+        mimeType: "image/png",
+      },
+      metadata: {
+        filename: "test-image.png",
+      },
+    },
+  ],
 } as const;
 
 export const agenticChatMultimodalPageEventTrace = defineEventTrace(
@@ -42,30 +58,12 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
         input: {
           threadId: "id-1",
           runId: "id-2",
-          protocolVersion: "1.0",
           state: {},
-          messages: [
-            {
-              id: "id-3",
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Tell me what do you see in this image",
-                },
-                {
-                  type: "image",
-                  source: shared5,
-                  metadata: {
-                    filename: "test-image.png",
-                  },
-                },
-              ],
-            },
-          ],
+          messages: [shared5],
           tools: shared4,
           context: [],
           forwardedProps: {},
+          protocolVersion: "1.0",
         },
       },
       {
@@ -142,7 +140,17 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
                   },
                 },
               ],
-              additional_kwargs: {},
+              additional_kwargs: {
+                "ag-ui": {
+                  attachments: [
+                    {
+                      index: 1,
+                      type: "image_url",
+                      filename: "test-image.png",
+                    },
+                  ],
+                },
+              },
               response_metadata: {},
               type: "human",
               name: null,
@@ -170,20 +178,7 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
       {
         type: "MESSAGES_SNAPSHOT",
         messages: [
-          {
-            id: "id-3",
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Tell me what do you see in this image",
-              },
-              {
-                type: "image",
-                source: shared5,
-              },
-            ],
-          },
+          shared5,
           {
             id: "id-4",
             role: "assistant",

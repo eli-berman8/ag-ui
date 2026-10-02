@@ -47,6 +47,15 @@ const shared6 = {
   ],
   additional_kwargs: {
     type: "human",
+    "ag-ui": {
+      attachments: [
+        {
+          index: 1,
+          type: "image_url",
+          filename: "test-image.png",
+        },
+      ],
+    },
   },
   response_metadata: {},
   type: "human",
@@ -54,9 +63,25 @@ const shared6 = {
   id: "id-3",
 } as const;
 const shared7 = {
-  type: "data",
-  value: shared4,
-  mimeType: "image/png",
+  id: "id-3",
+  role: "user",
+  content: [
+    {
+      type: "text",
+      text: "Tell me what do you see in this image",
+    },
+    {
+      type: "image",
+      source: {
+        type: "data",
+        value: shared4,
+        mimeType: "image/png",
+      },
+      metadata: {
+        filename: "test-image.png",
+      },
+    },
+  ],
 } as const;
 
 export const agenticChatMultimodalPageEventTrace = defineEventTrace(
@@ -70,27 +95,8 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
         input: {
           threadId: "id-1",
           runId: "id-2",
-          protocolVersion: "1.0",
           state: {},
-          messages: [
-            {
-              id: "id-3",
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Tell me what do you see in this image",
-                },
-                {
-                  type: "image",
-                  source: shared7,
-                  metadata: {
-                    filename: "test-image.png",
-                  },
-                },
-              ],
-            },
-          ],
+          messages: [shared7],
           tools: [
             {
               name: "change_background",
@@ -110,6 +116,7 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
           ],
           context: [],
           forwardedProps: {},
+          protocolVersion: "1.0",
         },
       },
       {
@@ -203,20 +210,7 @@ export const agenticChatMultimodalPageEventTrace = defineEventTrace(
       {
         type: "MESSAGES_SNAPSHOT",
         messages: [
-          {
-            id: "id-3",
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Tell me what do you see in this image",
-              },
-              {
-                type: "image",
-                source: shared7,
-              },
-            ],
-          },
+          shared7,
           {
             id: "id-4",
             role: "assistant",

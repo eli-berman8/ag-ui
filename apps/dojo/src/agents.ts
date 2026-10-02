@@ -33,6 +33,7 @@ import { a2uiFixedSchemaAgent } from "./mastra/agents/a2ui-fixed";
 import { PydanticAIAgent } from "@ag-ui/pydantic-ai";
 import { ADKAgent } from "@ag-ui/adk";
 import { AntigravityAgent } from "@ag-ui/antigravity";
+import { createADKJSDojoAgents } from "@ag-ui/adk-js-examples";
 import { SpringAiAgent } from "@ag-ui/spring-ai";
 import { HttpAgent } from "@ag-ui/client";
 import { A2AMiddlewareAgent } from "@ag-ui/a2a-middleware";
@@ -178,6 +179,7 @@ export const agentsIntegrations = {
         subgraphs: "subgraphs",
       },
     ),
+  "adk-js": async () => createADKJSDojoAgents(),
 
   "server-starter-all-features": async () =>
     mapAgents(
